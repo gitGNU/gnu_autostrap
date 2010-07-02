@@ -283,18 +283,25 @@ cat <<EOF >> $target/etc/kernel-img.conf
 postinst_hook = update-grub
 postrm_hook   = update-grub
 EOF
-    chroot $target cp /usr/lib/grub/i386-pc/stage2 /boot/grub/ \
-	|| chroot $target cp /lib/grub/i386-pc/stage2 /boot/grub/
+    #chroot $target cp /usr/lib/grub/i386-pc/stage2 /boot/grub/ \
+    #	|| chroot $target cp /lib/grub/i386-pc/stage2 /boot/grub/
+    grub_arch=i386-pc
+    cp $target/usr/lib/grub/i386-pc/stage[12] $target/boot/grub
+    cp $target/usr/lib/grub/i386-pc/*stage1_5 $target/boot/grub
+    sync
+
     chroot $target ln -s splashimages/debsplash.xpm.gz /boot/grub/splash.xpm.gz 
     # It's a bit messy, but you'll perform a clean 'grub-install /dev/hda' later
     chroot $target update-grub
 
     # Real works begins...
     echo "* Forging GRUB installation on the MBR"
-    `dirname $0`/grub.sh $disk_image $partition_fs
-
-    # Maybe do that after umounting the partition - though we work on
-    # different sectors
+    # Obsolete: `dirname $0`/grub.sh $disk_image $partition_fs
+    tmp_device_map=$(mktemp)
+    echo "(hd0) $disk_image" > $tmp_device_map
+    echo -e "root (hd0,0)\nsetup (hd0)" \
+      | $target/usr/sbin/grub --device-map=$tmp_device_map --batch
+    rm -f $tmp_device_map
 fi
 
 

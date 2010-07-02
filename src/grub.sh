@@ -17,6 +17,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
+# Note: this is obsolete, as there is actually a way to make GRUB
+# install itself on a disk image. 'grub-install' does not support
+# this, but base 'grub' with a custom device.map files does support
+# it:
+# 
+#   echo "(hd0) /path/to/my/system.img" > device.map
+#   echo -e "root (hd0,0)\nsetup (hd0)" | /usr/sbin/grub --device-map=device.map --batch
+
+
 # In file $1, at offset $2, write $3 in format $4
 function overwrite() {
   perl -e 'use IO::File;
@@ -29,7 +38,7 @@ function overwrite() {
 
 disk_image=$1
 partition_fs=${2:-ext3}
-grub_arch=${2:-i386-pc} # or x86_64-pc; maybe autodetect instead of default
+grub_arch=${3:-i386-pc} # or x86_64-pc; maybe autodetect instead of default
 
 if [ -z $disk_image ]; then
     echo "Usage: $0 disk_image.img [fs_type=ext3] [grub_arch=i386-pc]"
