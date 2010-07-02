@@ -1,0 +1,163 @@
+#!/bin/bash
+# 'sudo' with User-Mode Linux flavor
+# Copyright (C) 2007  Sylvain Beucler
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# Run the command as root using UML.
+# Similar to sudo, but in user mode.
+# e.g.: useful to loop-mount disk images w/o root access
+
+# Note: your environment&mounts are _not_ saved between successive
+# invokations. We might do that by saving /proc/mounts before killing
+# UML, or by letting an initial UML run in background, connected via a
+# Unix socket to accept and execute successive commands (+ would be
+# more efficient).
+
+UML=/usr/src/linux-2.6.21.3-check-sysemu/linux
+# maybe we should make use of 'linux --version' somehow:
+MOD_PATH=/usr/src/linux-2.6.21.3-check-sysemu/uml-modules/lib/modules/2.6.21.3/
+SLIRP=/usr/bin/slirp-fullbolt
+
+# Add */sbin paths before the */bin ones
+function add_sbin_path {
+    PATH=`echo $PATH | sed \
+      -e 's,\(^\|:\)/bin\(:\|$\),\1/sbin:/bin\2,' \
+      -e 's,\(^\|:\)/usr/bin\(:\|$\),\1/usr/sbin:/usr/bin\2,' \
+      -e 's,\(^\|:\)/usr/local/bin\(:\|$\),\1/usr/local/sbin:/usr/local/bin\2,'`
+}
+
+init_script=`mktemp` || exit 1
+init_script2=`mktemp` || exit 1
+slirp_script=`mktemp` || exit 1
+chmod 755 $init_script $init_script2 $slirp_script
+add_sbin_path;
+
+
+# Use getty to get Ctrl+C support (?)
+
+# Apparently /dev/console intercepts signals like 'intr' (maybe so
+# that init cannot be killed from the keyboard), we need to switch to
+# /dev/tty0. We can check which tty is used using the 'tty' command in
+# a UML'd bash.
+
+# TODO: we use /bin/sh instead of running getty directly from init -
+# does that make any difference?
+
+echo '#!/bin/sh' > $init_script
+#echo "exec /sbin/getty -inl $init_script2 38400 tty0" >> $init_script
+echo "exec /sbin/getty -inl $init_script2 38400 tty1" >> $init_script
+#echo "exec $init_script2 </dev/tty0 >/dev/tty0 2>/dev/tty0" >> $init_script
+#echo "exec $init_script2" >> $init_script
+
+## Generate an init script that mimics the current user's environment
+echo '#!/bin/sh' > $init_script2
+
+# Environment variables
+# TODO: escape <'> in the variable values
+# Note: default env is HOME=/,TERM=linux (not even PATH is set/exported)
+env | sed -e "s/^/export /" -e "s/=/='/" -e "s/\$/'/" >> $init_script2
+
+# Network
+cat <<EOF >> $init_script2
+ifconfig eth0 10.0.2.15
+route add default eth0
+# Optional:
+ifconfig lo up
+EOF
+
+# We may want to redirect all traffic from localhost to 10.0.2.2
+# though this will probably prevent from binding a temporary server;
+# is there a way to redirect traffic to the host only if the guest
+# didn't open it (overlay-style)?
+
+# Should we set the UML host name?
+#echo "hostname `hostname`" >> $init_script2
+
+# Pseudo filesystems
+cat <<EOF >> $init_script2
+mount procfs -t proc /proc
+mount devptsfs -t devpts /dev/pts # devpts requires proc, apparently (screen)
+EOF
+# Shall we?
+#mount -o bind -n /proc/mounts /etc/mtab
+
+# Load 'mount -o loop' support
+cat <<EOF >> $init_script2
+mount none -t tmpfs /lib/modules/
+mkdir /lib/modules/\`uname -r\`/
+mount -o bind $MOD_PATH /lib/modules/\`uname -r\`/
+# Test if loop is already available (statically compiled?)
+if losetup -f >/dev/null; then
+:
+else
+  # built as module, try to load it
+  modprobe loop
+fi
+EOF
+#insmod $MOD_PATH/drivers/block/loop.ko
+# What happens if the module is compiled statically?
+# -> FATAL: Module loop not found.
+# Does it still provide several /dev/loopX?
+# -> Yes, no problem.
+
+
+# Working directory
+echo 'cd $PWD' >> $init_script2
+
+# Actual command
+echo $* >> $init_script2
+
+# Shut down UML w/o ugly kernel trace. Unfortunately halt takes ~2s.
+# Isn't there a way to suppress kernel ending messages ("Kernel panic
+# - not syncing: Attempted to kill init!" and "System halted.")?
+cat <<EOF >> $init_script2
+umount /proc
+umount /dev/pts
+echo "Halting system..."
+halt -d -f # as in /etc/init.d/halt
+EOF
+
+
+# Make slirp less noisy on startup
+echo '#!/bin/bash' > $slirp_script
+echo "exec $SLIRP 2>/dev/null" >> $slirp_script
+
+
+# What happens after the kernel is loaded:
+# - kernel-parameters: a dot -> module.param notation -> not included in $*
+# - kernel-parameters: $* contains params that the kernel did not recognized
+# - Cf. /proc/cmdline for the complete command-line though
+# - $PWD becomes /
+# - init specifies the full path to an executable, either binary or script
+
+## - Console control -
+## No C-c C-\ C-z:
+# $UML rootfstype=hostfs ... init=$init_script
+
+## getty supports C-c and C-\, but not C-z (and I don't have a clue
+## why); C-z actually gets activated if you run another bash
+## In some situations I get:
+## bash: no job control in this shell
+# con0=null to get rid of kernel messages
+$UML rootfstype=hostfs rw quiet \
+    eth0=slirp,,$slirp_script \
+    init=$init_script \
+    con0=null \
+    con1=fd:0,fd:1
+
+#rm $init_script $init_script2
+echo "Ran $init_script - $init_script2"

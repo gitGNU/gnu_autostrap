@@ -1,0 +1,86 @@
+mainmenu "Linux Kernel Configuration"
+
+menu "Loadable module support"
+
+config MODULES
+        bool "Enable loadable module support"
+        help
+          Kernel modules are small pieces of compiled code which can
+          be inserted in the running kernel, rather than being
+          permanently built into the kernel.  You use the "modprobe"
+          tool to add (and sometimes remove) them.  If you say Y here,
+          many parts of the kernel can be built as modules (by
+          answering M instead of Y where indicated): this is most
+          useful for infrequently used options which are not required
+          for booting.  For more information, see the man pages for
+          modprobe, lsmod, modinfo, insmod and rmmod.
+
+          If you say Y here, you will need to run "make
+          modules_install" to put the modules under /lib/modules/
+          where modprobe can find them (you may need to be root to do
+          this).
+
+          If unsure, say Y.
+
+endmenu
+
+menu "Test"
+
+config IDE
+	tristate "IDE"
+
+config IDE2
+	tristate "IDE2"
+config IDE3
+	tristate "IDE3"
+	default y
+        select IDE2
+config IDE4
+	tristate "IDE4"
+        default y
+
+if IDE
+
+  comment To
+
+config BLK_DEV_IDEDISK
+	tristate "Include IDE/ATA-2 DISK support"
+	---help---
+	  This will include enhanced support for MFM/RLL/IDE hard disks.  If
+	  you have a MFM/RLL/IDE disk, and there is no special reason to use
+	  the old hard disk driver instead, say Y.  If you have an SCSI-only
+	  system, you can say N here.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ide-disk.
+	  Do not compile this driver as a module if your root file system
+	  (the one containing the directory /) is located on the IDE disk.
+
+	  If unsure, say Y.
+
+
+  config IDE_GENERIC
+	tristate "generic/default IDE chipset support"
+	default y
+	help
+	  If unsure, say Y.
+
+  config IDE_GENERIC2
+	tristate "generic/default IDE chipset support"
+	default y
+	help
+	  If unsure, say Y.
+  config IDE_GENERIC3
+	tristate "generic/default IDE chipset support"
+	default y
+	help
+	  If unsure, say Y.
+  config IDE_GENERIC4
+	tristate "generic/default IDE chipset support"
+	default y
+	help
+	  If unsure, say Y.
+
+endif
+
+endmenu

@@ -1,0 +1,218 @@
+#!/bin/bash
+# 'sudo' with User-Mode Linux flavor
+# Copyright (C) 2007  Sylvain Beucler
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# Run the command as root using UML.
+# Similar to sudo, but in user mode.
+# e.g.: useful to loop-mount disk images w/o root access
+
+# Note: your environment&mounts are _not_ saved between successive
+# invokations. We might do that by saving /proc/mounts before killing
+# UML, or by letting an initial UML run in background, connected via a
+# Unix socket to accept and execute successive commands (+ would be
+# more efficient).
+
+UML=/usr/src/linux-2.6.21.5-um/linux
+MOD_PATH=/usr/src/linux-2.6.21.5-um/uml-modules/lib/modules/`$UML --version`/
+SLIRP=/usr/bin/slirp-fullbolt
+
+verbose=0
+
+# Add */sbin paths before the */bin ones
+function add_sbin_path {
+    PATH=`echo $PATH | sed \
+      -e 's,\(^\|:\)/bin\(:\|$\),\1/sbin:/bin\2,' \
+      -e 's,\(^\|:\)/usr/bin\(:\|$\),\1/usr/sbin:/usr/bin\2,' \
+      -e 's,\(^\|:\)/usr/local/bin\(:\|$\),\1/usr/local/sbin:/usr/local/bin\2,'`
+}
+
+init=`mktemp` || exit 1
+rc=`mktemp` || exit 1
+quiet_slirp=`mktemp` || exit 1
+chmod 755 $init $rc $quiet_slirp
+add_sbin_path;
+
+
+# Use getty to get Ctrl+C support (?)
+
+# Apparently /dev/console intercepts signals like 'intr' (maybe so
+# that init cannot be killed from the keyboard), we need to switch to
+# /dev/tty0. We can check which tty is used using the 'tty' command in
+# a UML'd bash.
+
+# TODO: we use /bin/sh instead of running getty directly from init -
+# does that make any difference?
+
+if [ $verbose -eq 1 ]; then
+    echo '#!/bin/sh -x' > $init
+else
+    echo '#!/bin/sh' > $init
+fi
+#echo "exec /sbin/getty -inl $init_script2 38400 tty0" >> $init
+#echo "exec /sbin/getty -inl $init_script2 38400 tty1" >> $init
+#echo "exec setsid $init_script2 </dev/tty1 >/dev/tty1 2>/dev/tty1" >> $init
+# setsid is somehow necessary to really attach the terminal to ttyX below.
+# Don't exec, otherwise $rc will detach and init/UML will finish
+echo "setsid $rc" >> $init
+echo 'exit $?' >> $init
+# -> doesn't seem to work, the UML return code is whether init just
+#    ended or called shutdown, not related to the init return value
+
+## Generate an init script that mimics the current user's environment
+if [ $verbose -eq 1 ]; then
+    echo '#!/bin/sh -x' > $rc
+else
+    echo '#!/bin/sh' > $rc
+fi
+# Attach to ttyX because /dev/console is blocking signals (C-c, etc.):
+if [ $verbose -eq 1 ]; then
+    echo "exec </dev/tty0 >/dev/tty0 2>/dev/tty0" >> $rc
+else
+# we quiet UML some more with con0=null, so we use tty1 instead of tty0
+    echo "exec </dev/tty1 >/dev/tty1 2>/dev/tty1" >> $rc
+fi
+
+# Forward environment
+# TODO: escape <'> in the variable values
+# Note: default env is HOME=/,TERM=linux (not even PATH is set/exported)
+env | sed -e "s/^/export /" -e "s/=/='/" -e "s/\$/'/" >> $rc
+
+# Network
+cat <<EOF >> $rc
+ifconfig eth0 10.0.2.15
+route add default eth0
+# Optional:
+ifconfig lo up
+EOF
+
+# We may want to redirect all traffic from localhost to 10.0.2.2
+# though this will probably prevent from binding a temporary server;
+# is there a way to redirect traffic to the host only if the guest
+# didn't open it (overlay-style)?
+
+# TESTME: Should we really set the UML host name?
+echo "hostname `hostname`" >> $rc
+
+# Pseudo filesystems
+cat <<EOF >> $rc
+mount procfs -t proc /proc
+mount devptsfs -t devpts /dev/pts # devpts requires proc, apparently (screen)
+EOF
+
+# Note: I tried:
+#mount -o bind -n /proc/mounts /etc/mtab
+# but since /proc/mounts (or /proc/self/mounts) is a special file, I just get:
+#cat: /etc/mtab: Invalid argument
+# Plus mount(8) doesn't really recommend it, only when efficiency is necessary.
+
+# I also tried to replace /etc/mtab by a writable copy:
+#cat <<'EOF' >> $rc
+#workdir=`mktemp -d`
+#cp /etc/mtab $workdir/mtab
+#mount -o bind -n $workdir/mtab /etc/mtab
+#EOF
+# But then we get:
+#can't create lock file /etc/mtab~730:
+#Permission denied (use -n flag to override)
+# So let's forget about it.
+
+
+# Load 'mount -o loop' support
+cat <<EOF >> $rc
+mount none -t tmpfs /lib/modules/
+mkdir /lib/modules/\`uname -r\`/
+mount -o bind $MOD_PATH /lib/modules/\`uname -r\`/
+# Test if loop is already available (statically compiled?)
+if losetup -f >/dev/null 2>/dev/null; then
+:
+else
+  # built as module, try to load it
+  modprobe loop
+fi
+EOF
+#insmod $MOD_PATH/drivers/block/loop.ko
+# What happens if the module is compiled statically?
+# -> FATAL: Module loop not found.
+# Does it still provide several /dev/loopX?
+# -> Yes, no problem.
+
+
+# Working directory
+echo 'cd $PWD' >> $rc
+
+# Actual command
+echo "$*" >> $rc
+# Grab the return code
+echo 'ret=$?' >> $rc
+
+# Clean-up filesystems
+cat <<EOF >> $rc
+umount /lib/modules/\`uname -r\`/
+umount /lib/modules/
+umount /proc
+umount /dev/pts
+EOF
+
+# Quiet halt - shut down UML w/o ugly kernel trace. 
+# Note: unfortunately 'halt' takes ~2s.
+# Isn't there a way to suppress kernel ending messages ("Kernel panic
+# - not syncing: Attempted to kill init!" and "System halted.")?
+# --> Actually not necessary since con0=null, disabled.
+# Only, UML exits 1 when init ends, and 0 when properly shutdown
+cat <<EOF >> $rc
+#echo "Halting system..."
+#halt -d -f # as in /etc/init.d/halt
+EOF
+
+# Forward the command return code
+echo 'exit $ret' >> $rc
+
+
+# Make slirp less noisy on startup
+echo '#!/bin/bash' > $quiet_slirp
+echo "exec $SLIRP 2>/dev/null" >> $quiet_slirp
+
+
+# What happens after the kernel is loaded:
+# - kernel-parameters: a dot -> module.param notation -> not included in $*
+# - kernel-parameters: $* contains params that the kernel did not recognized
+# - Cf. /proc/cmdline for the complete command-line though
+# - $PWD becomes /
+# - init specifies the full path to an executable, either binary or script
+
+if [ $verbose -eq 1 ]; then
+    options="eth0=slirp,,$SLIRP"
+else
+    options="quiet con=null con1=fd:0,fd:1 eth0=slirp,,$quiet_slirp";
+fi
+$UML rootfstype=hostfs rw \
+    init=$init \
+    $options \
+    mem=64m
+ret=$?
+# con0=null to get rid of kernel messages
+# mem=64m just in case (default 32m)
+
+# TODO: how can we get stderr separately? With UML and the terminal
+# emulation, the guest's fd 1 and 2 are both sent to the host's stdout.
+
+# Clean-up
+rm $init $rc $quiet_slirp
+#echo "Ran $init - $rc"
+#exit $ret # disabled, doesn't really work, cf. $init comments
+exit 0

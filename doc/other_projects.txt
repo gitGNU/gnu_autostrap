@@ -1,0 +1,6 @@
+* Le Bouteur: Smallish standalone GRUB installation to boot on network
+  or reinstall grub:
+  http://labs.libre-entreprise.org/projects/lebouteur/
+
+* qemu-make-debian-root, part of the 'qemu' or 'qemu-utils' package
+  under Debian

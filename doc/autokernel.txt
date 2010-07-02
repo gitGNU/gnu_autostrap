@@ -1,0 +1,52 @@
+On souhaite reproduire le comportement de menuconfig, mais en
+automatisé.
+
+Exemple: IDE_GENERIC doit être activé en conséquence de
+CONFIG_BLK_DEV_IDEDISK=y (nouvelle valeur qui apparaît avec une valeur
+par défaut), CONFIG_CRC32 (defaut y) doit rester désactivé (valeur
+déjà existante et <code>not set</code>, elle n'apparaît pas à la suite
+d'une intervention de ma part).
+
+Les essais avec conf.c se montrent inconcluants. conf.c charge un
+<code>.config</code>, ou bien un <code>allX.config</code> (ex:
+<code>allno.config</code> pour <code>make allnoconfig</code>). Mais il
+n'est vraisemblablement pas possible de charger plusieurs fichiers à
+la suite (erreurs parlant de données superflues) - donc pas
+d'"override" possible après coup.
+
+Il faudrait faire les choses en 2 temps:
+
+- allnoconfig, qui définit '''ou indéfinit''' (<code># CONFIG_XXX is
+not set</code>) les valeurs de base, sans utiliser
+<code>allno.config</code>.
+
+- un second programme qui active les valeurs demandées (style
+<code>allno.config</code>), puis utilise les valeurs par défaut de
+toutes les nouvelles entrées ("NEW") - mais uniquement les entrées
+nouvellement créées à la suite de l'activation des valeurs demandées,
+pas les valeurs <code>is not set</code> déjà vues par
+<code>allnoconfig</code>.
+
+mconf.c n'est pas un exemple de clarté (ni quoi que ce soit dans
+<code>scripts/kconfig</code> d'ailleurs), mais il va falloir mieux
+chercher.
+
+
+-----
+
+Notes sur la syntaxe Kconfig:
+
+depends -> pour afficher des cases masquées (ex: activer un
+	   sous-menu);
+
+select -> permet d'activer et bloquer d'autres cases (il n'est plus
+	  possible de désactiver la case SELECTionné);
+
+default y -> active une case qui vient d'être dé-masquée (résolution
+ 	     d'une dépendance) dans menuconfig;
+
+noconfig:
+- ne cherche pas à activer les dépendances des éléments de allno.config
+- ignore les éléments dont les dépendances ne sont pas satisfaites
+- n'active pas valeurs par défaut
+

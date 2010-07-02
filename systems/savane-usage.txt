@@ -1,0 +1,42 @@
+ext3:
+606M -rw-r--r--  1 sylvain sylvain 2,0G 2007-06-10 11:00 savane.img
+787M -rw-r--r--  1 sylvain sylvain 2,0G 2007-06-09 23:50 savane.img.old
+238M -rw-r--r--  1 sylvain sylvain 238M 2007-06-10 01:17 savane.tar.gz
+217M -rw-r--r--  1 sylvain sylvain 217M 2007-06-10 01:13 savane.tar.bz2
+
+ext3:
+init ~320M ?
+639M    savane.img
+590M -rw-r--r-- 1 sylvain sylvain 2,0G 2007-06-10 11:26 savane-sparse.img
+227M -rw-r--r-- 1 sylvain sylvain 227M 2007-06-10 11:33 savane.tar.gz
+207M -rw-r--r-- 1 sylvain sylvain 206M 2007-06-10 11:31 savane.tar.bz2
+
+reiserfs:
+274M    savane-init.img
+509M -rw-r--r-- 1 sylvain sylvain 2,0G 2007-06-10 16:05 savane.img
+222M -rw-r--r-- 1 sylvain sylvain 222M 2007-06-10 16:59 savane.tar.gz
+202M -rw-r--r-- 1 sylvain sylvain 202M 2007-06-10 17:05 savane.tar.bz2
+
+ext3:
+607M -rw-r--r-- 1 sylvain sylvain 2,0G 2007-06-10 22:19 savane.img
+557M -rw-r--r-- 1 sylvain sylvain 2,0G 2007-06-10 22:19 savane.img (w/o sparse)
+512M df -h /
+215M -rw-r--r-- 1 sylvain sylvain 215M 2007-06-10 20:56 savane.img.tar.gz
+248M -rw-r--r-- 1 sylvain sylvain 247M 2007-06-10 22:23 savane.qcow
+246M -rw-r--r-- 1 sylvain sylvain 246M 2007-06-10 22:26 savane.qcow2
+
+ext3+rewrite(mount+cp):
+628M -rw-r--r--  1 sylvain sylvain 2,0G 2007-06-23 18:12 savane.img
+579M -rw-r--r--  1 sylvain sylvain 2,0G 2007-06-23 20:01 savane.img.sparse
+222M -rw-r--r--  1 sylvain sylvain 222M 2007-06-17 12:54 savane.img.tar.gz
+253M -rw-r--r--  1 sylvain sylvain 252M 2007-06-17 12:56 savane.qcow2
+-
+486M -rw-r--r--  1 sylvain sylvain 2,0G 2007-06-23 19:56 savane2.img
+132M -rw-r--r--  1 sylvain sylvain 132M 2007-06-23 19:58 savane2.img.tar.gz
+159M -rw-r--r--  1 sylvain sylvain 158M 2007-06-23 20:00 savane2.qcow
+157M -rw-r--r--  1 sylvain sylvain 157M 2007-06-23 19:59 savane2.qcow2
+reiserfs+rewrite(mount+cp):
+411M -rw-r--r--  1 sylvain sylvain 2,0G 2007-06-23 21:23 savane2.img
+141M -rw-r--r-- 1 sylvain sylvain 141M 2007-06-23 21:33 savane2.img.tar.gz
+167M -rw-r--r--  1 sylvain sylvain 166M 2007-06-23 21:46 savane2.qcow
+166M -rw-r--r--  1 sylvain sylvain 165M 2007-06-23 21:45 savane2.qcow2

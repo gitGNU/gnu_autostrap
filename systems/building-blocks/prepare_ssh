@@ -1,0 +1,61 @@
+#!/bin/bash
+mount_image
+
+echo " * SSH configuration"
+known_hosts_file=`mktemp -t savane-ssh.XXXXXXXXXX` || exit 1
+
+#<sudo>
+./lomount.sh savane.img 1 $dir
+mkdir $dir/root/.ssh
+cp ~/.ssh/id_dsa.pub $dir/root/.ssh/authorized_keys
+#</sudo>
+
+# Create a known-hosts file, so SSH don't ask confirmation
+# interactively when connecting to the host for the first time
+echo -n "localhost " > $known_hosts_file
+cat $dir/etc/ssh/ssh_host_rsa_key.pub >> $known_hosts_file
+
+umount_image
+
+#-------
+
+
+echo " * Start the server"
+qemu `pwd`/savane.img -kernel-kqemu -redir tcp:2222::22 -redir tcp:50080::80 -daemonize -nographic
+# while true; do
+#     sleep 1;
+#     echo -n "Trying to contact server on localhost:2222/tcp..."
+
+#     # testing with nc doesn't work, qemu accepts connections even if
+#     # remote is not ready yet:
+#     #nc -z localhost 2222
+
+#     # Doesn't really work, if open, waits indefinitely; any other error returns 255
+#     if ssh -p2222 -o UserKnownHostsFile=$known_hosts_file root@localhost true; then
+# 	echo "Found."
+# 	break
+#     fi
+#     echo "not up yet."
+# done
+# Let's comment the whole block, it works without anyway. Problem is
+# now to find how to kill this script if SSH is not up after 2mn.
+
+# So we just try to connect to QEMU until it's up - however SSH
+# connection establishment failed a couple times for me, while it
+# worked OK the other times. This method may not be very stable.
+
+
+# Use a knownhosts file to avoid interactive prompt about the identity
+# of the remote host; disabled sending environment, because we want to
+# execute our script in the remote default env (no LANG, in
+# particular, to avoid missing locale errors).
+options="-o UserKnownHostsFile=$known_hosts_file -o SendEnv=no -o Port=2222"
+
+#--------
+
+echo "* Start installation"
+ssh $options root@localhost sh savane-install.sh
+
+echo "* Shutting down"
+ssh $options root@localhost poweroff
+

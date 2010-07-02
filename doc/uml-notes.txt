@@ -1,0 +1,41 @@
+$ linux rootfstype=hostfs rw quit init=/bin/bash
+root@(none):/# cat
+^H
+root@(none):/# stty intr ^H
+root@(none):/# cat
+^C
+root@(none):/# stty intr ^I
+root@(none):/# cat
+^C^H
+
+
+=> Who is intercepting the C-c signal???
+
+
+Idem for C-\ (quit)
+Idem for C-z (susp)
+C-s (stop), C-q (start), C-d (eof) do work.
+
+==========
+
+Errors:
+* Formatting pseudo-partition 1
+ext2fs_check_if_mount: Invalid argument while determining whether /dev/loop0 is mounted.
+mkfs.ext3: Invalid argument
+        while trying to create journal
+
+
+-
+
+
+LANG=C ./umdo.sh bash -x ./createdisk.sh savane.img 2048 ext3 
+
+* Formatting pseudo-partition 1
+++ losetup -f
++ loop=/dev/loop0
++ losetup -o 32256 /dev/loop0 savane.img
++ mkfs.ext3 -q /dev/loop0
+ext2fs_check_if_mount: Invalid argument while determining whether /dev/loop0 is mounted.
+mkfs.ext3: Invalid argument
+        while trying to create journal
++ losetup -d /dev/loop0

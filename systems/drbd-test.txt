@@ -1,0 +1,21 @@
+./umdo.sh ./qemu-bootstrap.sh debian.img 2048 lenny http://network/mirrors/debian/ ext3 single_partition hda
+
+dd if=/dev/null of=drbd1.img bs=1 seek=1G
+dd if=/dev/null of=drbd2.img bs=1 seek=1G
+dd if=/dev/null of=drbd1-meta.img bs=1 seek=128M
+dd if=/dev/null of=drbd2-meta.img bs=1 seek=128M
+
+qemu -kernel vmlinuz-2.6.26-2-686 -initrd initrd.img-2.6.26-2-686 -append "root=/dev/hda" -net nic,macaddr=52:54:00:12:34:56 -net tap,ifname=tap1,script=no -hda debian1.img -hdb drbd1.img -hdc drbd1-meta.img 
+
+qemu -kernel vmlinuz-2.6.26-2-686 -initrd initrd.img-2.6.26-2-686 -append "root=/dev/hda" -net nic,macaddr=52:54:00:12:34:57 -net tap,ifname=tap2,script=no -hda debian2.img -hdb drbd2.img -hdc drbd2-meta.img
+
+
+pvcreate /dev/hdb
+vgcreate VG0 /dev/hdb
+lvcreate VG0 -n test -L 10M
+lvcreate VG0 -n test-drbdmeta -L 128M
+
+
+vde_switch
+qemu -kernel vmlinuz-2.6.26-2-686 -initrd initrd.img-2.6.26-2-686 -append "root=/dev/hda" -hda debian1.img -hdb drbd1.img -hdc drbd1-meta.img -kernel-kqemu -net nic,macaddr=52:54:00:12:34:56 -net vde,sock=/tmp/vde.ctl
+qemu -kernel vmlinuz-2.6.26-2-686 -initrd initrd.img-2.6.26-2-686 -append "root=/dev/hda" -hda debian2.img -hdb drbd2.img -hdc drbd2-meta.img -kernel-kqemu -net nic,macaddr=52:54:00:12:34:57 -net vde,sock=/tmp/vde.ctl
