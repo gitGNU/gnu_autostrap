@@ -1,5 +1,5 @@
 #!/bin/bash
-# Unattented Savane test install
+# Unattended Savane test install
 # 
 # Copyright (C) 2007, 2008  Sylvain Beucler
 # 

@@ -24,7 +24,7 @@ function mount_image {
     # with (say) /tmp while we work in it
     mkdir $target
     #<sudo>
-    ./lomount.sh $image 1 $target || exit 1
+    lomount.sh $image 1 $target || exit 1
     #</sudo>
     echo $target
 }
@@ -89,10 +89,10 @@ image=savane.img
 
 echo "* Initial image"
 #<sudo>
-#./qemu-bootstrap.sh $image 2048 etch http://10.0.2.2/mirrors/debian/ ext3 disk hda
-./qemu-bootstrap.sh $image 2048 etch http://network/mirrors/debian/ ext3 disk hda
+#./qemu-bootstrap.sh $image 2048 lenny http://10.0.2.2/mirrors/debian/ ext3 disk hda
+qemu-bootstrap.sh $image 2048 lenny http://network/mirrors/debian/ ext3 disk hda
 # With a apt-proxy:
-#./qemu-bootstrap.sh $image 2048 etch http://10.0.2.2:9999/debian/ ext3 disk hda
+#./qemu-bootstrap.sh $image 2048 lenny http://10.0.2.2:9999/debian/ ext3 disk hda
 #</sudo>
 
 echo "* Mount image"
