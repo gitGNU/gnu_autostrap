@@ -1,7 +1,7 @@
 #!/bin/bash
 # Unattended Savane test install
 # 
-# Copyright (C) 2007, 2008  Sylvain Beucler
+# Copyright (C) 2007, 2008, 2010  Sylvain Beucler
 # 
 # This file is part of Savane.
 # 
@@ -25,7 +25,9 @@ export LANG=C
 aptitude update # we may have modified sources.list in the clean-up phase
 
 # aptitude: Do not treat Recommended packages as dependencies:
-echo 'Aptitude::Recommends-Important "false";' >> /etc/apt/apt.conf.d/00aptitude
+echo 'Aptitude::Recommends-Important "false";' >> /etc/apt/apt.conf.d/00aptitude  # etch
+echo 'APT::Install-Recommends "false";' >> /etc/apt/apt.conf.d/00recommends  # lenny
+
 
 # GNU logo on startup
 aptitude --assume-yes install grub-splashimages 
@@ -36,7 +38,7 @@ update-grub
 
 # VServer test:
 #aptitude --assume-yes install util-vserver
-#vserver test build -m debootstrap -- -d etch -m http://10.0.2.2/mirrors/debian
+#vserver test build -m debootstrap -- -d lenny -m http://10.0.2.2/mirrors/debian
 #echo 101 > /etc/vservers/test/context
 
 
@@ -44,13 +46,13 @@ update-grub
 DEBIAN_FRONTEND=noninteractive aptitude install --assume-yes postfix
 
 ## Additional SCMs
-echo "deb http://www.backports.org/debian etch-backports main" > /etc/apt/sources.list.d/backports.org.list
+echo "deb http://www.backports.org/debian lenny-backports main" > /etc/apt/sources.list.d/backports.org.list
 wget -O - http://backports.org/debian/archive.key | apt-key add -
 aptitude update
-# First install with Etch dependencies
+# First install with Stable dependencies
 aptitude --assume-yes install cvs subversion git-core mercurial
 # Then upgrade with Backports.org versions
-aptitude --assume-yes install -t etch-backports git-core mercurial
+aptitude --assume-yes install -t lenny-backports git-core mercurial
 
 
 ## Savane
@@ -73,10 +75,10 @@ cat <<EOF > /etc/mysql/conf.d/skip-networking.cnf
 [mysqld]
 skip-networking
 EOF
-aptitude --assume-yes install apache libapache-mod-php5 mysql-server php5-mysql
+aptitude --assume-yes install apache2 libapache2-mod-php5 mysql-server php5-mysql
 make database
 ln -s /usr/src/savane/frontend/php /var/www/savane
-cat <<EOF > /etc/apache/conf.d/savane.conf
+cat <<EOF > /etc/apache2/conf.d/savane.conf
 <Directory "/var/www/savane/">
   AllowOverride All
 </Directory>

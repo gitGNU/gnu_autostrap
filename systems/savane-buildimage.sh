@@ -1,6 +1,6 @@
 #!/bin/bash -xe
 # Build a Savane test install qemu image automatically
-# Copyright (C) 2007  Sylvain Beucler
+# Copyright (C) 2007, 2010  Sylvain Beucler
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
+
+# Usage: $0 [debian-mirror]
 
 function mount_image {
     image=$1
@@ -45,7 +47,8 @@ function start_image {
     mount devpts -t devpts $target/dev/pts
     mount sysfs -t sysfs $target/sys
 
-    chroot $target /etc/init.d/sysklogd start
+    #chroot $target /etc/init.d/sysklogd start  # etch
+    chroot $target /etc/init.d/rsyslog start  # lenny
     # Maybe too much:
     #for i in /etc/rc2.d/*; do $i start; done
     #</sudo>
@@ -74,7 +77,7 @@ function umount_image {
     #<sudo>
     umount $target
     #</sudo>
-    rmdir $target
+    rmdir $target ${target%/mp}
 }
 
 function copy_in {
@@ -89,17 +92,15 @@ image=savane.img
 
 echo "* Initial image"
 #<sudo>
-#./qemu-bootstrap.sh $image 2048 lenny http://10.0.2.2/mirrors/debian/ ext3 disk hda
-qemu-bootstrap.sh $image 2048 lenny http://network/mirrors/debian/ ext3 disk hda
-# With a apt-proxy:
-#./qemu-bootstrap.sh $image 2048 lenny http://10.0.2.2:9999/debian/ ext3 disk hda
+#qemu-bootstrap.sh $image 2048 lenny "$1" ext3 disk hda
 #</sudo>
 
 echo "* Mount image"
 start_image $image
 
 echo "* Copy installation files"
-copy_in /root savane-install.sh
+dir=$(dirname $0)  # quick'n'dirty
+copy_in /root $dir/savane-install.sh
 
 echo "* Start installation"
 #<sudo>
@@ -111,4 +112,4 @@ chroot $target sh /root/savane-install.sh
 echo "* Unmounting image"
 stop_image
 
-echo 'Now: ./savane.sh'
+echo 'Now: ./savane-run.sh'

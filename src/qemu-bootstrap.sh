@@ -1,6 +1,6 @@
 #!/bin/bash -x
 # Builds a Debian disk image suitable for QEMU or UML
-# Copyright (C) 2007, 2009  Sylvain Beucler
+# Copyright (C) 2007, 2009, 2010  Sylvain Beucler
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Dependencies: debootstrap, grub stage 1&1.5 (grub.sh)
+# Dependencies: makedev, debootstrap
 
 # Default values for command-line parameters
 default_disk_image='debian.img'
 default_disk_size=2048 # 2GB
-default_debian_distro='etch'
+default_debian_distro='lenny'
 default_debian_mirror='http://ftp.fr.debian.org/debian/'
 default_partition_fs='ext3' # can also be reiserfs
 default_disk_style='disk' # or single_partition
@@ -43,7 +43,7 @@ fi
 
 if [ "$1" = '--version' ]; then
     echo "bootstrapX v0
-Copyright (C) 2007  Sylvain Beucler
+Copyright (C) 2007, 2009, 2010  Sylvain Beucler
 This is free software.  You may redistribute copies of it under the terms of
 the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.
 There is NO WARRANTY, to the extent permitted by law."
@@ -229,6 +229,17 @@ EOF
 if [ $disk_style = 'disk' ]; then
 
     echo "* Kernel"
+    # We install a custom kernel by default, because there's a number
+    # of issues when installing the Debian kernel:
+    # - It creates an initrd image, based on inspecting the
+    #   installer's kernel/hardware configuration, rather than the -
+    #   target configuration (typically QEMU)
+    # - We can't skip the initrd image (kernel panic when mounting
+    #   root fs) probably because the Debian kernel is very modular
+    #   and needs to load module to access even the QEMU IDE disk.
+    # - With all the virtual mounts, update-grub usually can't work
+    #   and is pretty strict, so it will abort and make the package
+    #   post-configuration fail
     cp bzImage $target/boot/
     rdev $target/boot/bzImage 03,01 # boot /dev/hda1 by default
     
@@ -279,9 +290,11 @@ title  ${disk_image%.img} - Debian GNU/Linux "$debian_distro"
 root   (hd0,0)
 kernel /boot/bzImage root=/dev/hda1 clocksource=pit
 EOF
+# Prepare for stock kernel installations:
 cat <<EOF >> $target/etc/kernel-img.conf
 postinst_hook = update-grub
 postrm_hook   = update-grub
+do_initrd     = yes
 EOF
     #chroot $target cp /usr/lib/grub/i386-pc/stage2 /boot/grub/ \
     #	|| chroot $target cp /lib/grub/i386-pc/stage2 /boot/grub/
