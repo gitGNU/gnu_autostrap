@@ -17,8 +17,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# TODO: check the 'zerofree' utility
-
 image=$1
 
 if [ -z $image ]; then
@@ -28,43 +26,55 @@ fi
 
 # Rewrite the disk image, this file get rid of deleted files that
 # weren't completely deleted and take space (eg. downloaded packages)
-mp1=`mktemp -d`
-lomount.sh $image 1 $mp1 || exit 1
-
-mp2=`mktemp -d`
-rm -f $image.2
-# Make an image with exactly the same size and filesystem type
-dd if=/dev/null of=$image.2 bs=1 seek=`ls -l $image | awk '{ print $5}'`
+fstype=`lofile.sh $image 1`
 UNITS=`fdisk -lu $image 2>/dev/null | grep ${image}1 | tr -d '*' | tr -s ' ' | cut -f2 -d' '`
 offset=`expr 512 '*' $UNITS`
-# Copy first sector (bootsector + grub stage1.5)
-dd if=$image of=$image.2 count=1 bs=$offset conv=notrunc
 
-loop=`losetup -f` # dunno how I can avoid race condition here :/
-losetup -o $offset $loop $image.2
-fstype=`lofile.sh $image 1`
 if [ "$fstype" == 'UNKNOWN' ]; then
     echo "Unknown file system"
     exit 1
 fi
-if [ "$fstype" == "ext3" ]; then
-    # non-patched-grub-legacy doesn't like the default 256 inode size
-    # mkfs.ext3: "Warning: 256-byte inodes not usable on older systems"
-    mkfs.$fstype -I 128 -q $loop
+if [ "$fstype" == "ext3" -o "$fstype" == "ext2" ]; then
+    # Oldish stuff:
+    ## non-patched-grub-legacy doesn't like the default 256 inode size
+    ## mkfs.ext3: "Warning: 256-byte inodes not usable on older systems"
+    #loop=$(losetup -o $offset -f -v $image.2 | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
+    #mkfs.$fstype -I 128 -q $loop
+    #losetup -d $loop
+
+    # Use zerofree (faster than copying all files to a new disk image)
+    loop=$(losetup -o $offset -f -v $image | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
+    zerofree -v $loop
+    losetup -d $loop
+
+    # http://intgat.tigress.co.uk/rmy/uml/sparsify.html mentions the
+    # 'sparsify.c' companion to 'zerofree', but it's just like 'cp
+    # --sparse=always' (except that it works in-place), and it
+    # requires working on the partition *containing* the disk image
+    # (which requires real root access, and remounting it read-only),
+    # so let's not use it.
 else
+    mp1=`mktemp -d`
+    lomount.sh $image 1 $mp1 || exit 1
+
+    mp2=`mktemp -d`
+    rm -f $image.2
+    # Make an image with exactly the same size and filesystem type
+    dd if=/dev/null of=$image.2 bs=1 seek=`ls -l $image | awk '{ print $5}'`
+    # Copy first sector (bootsector + grub stage1.5)
+    dd if=$image of=$image.2 count=1 bs=$offset conv=notrunc
+    loop=$(losetup -o $offset -f -v $image.2 | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
     mkfs.$fstype -q $loop
+    losetup -d $loop
+    lomount.sh $image.2 1 $mp2 || exit 1
+
+    cp -a $mp1/* $mp2/
+
+    umount $mp1
+    umount $mp2
+
+    mv $image.2 $image
 fi
-losetup -d $loop
-
-lomount.sh $image.2 1 $mp2 || exit 1
-
-cp -a $mp1/* $mp2/
-
-umount $mp1
-umount $mp2
-
-mv $image.2 $image
-
 
 # Use sparse blocks whenever possible:
 # (not needed here, tar and qemu-img also take care of that)
