@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/bash -e
 # Detect the filesystem of a disk image partition
-# Copyright (C) 2007  Sylvain Beucler
+# Copyright (C) 2007, 2010  Sylvain Beucler
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,10 @@
 FILE=$1
 PART=$2
 
+if ! which fdisk > /dev/null; then
+    echo "Cannot find 'fdisk'" >&2
+    exit 1
+fi
 UNITS=`fdisk -lu $FILE 2>/dev/null | grep $FILE$PART | tr -d '*' | tr -s ' ' | cut -f2 -d' '`
 # With less than 3*512 file cannot determine the filesystem type
 magic=`dd if=$FILE skip=$UNITS bs=512 count=3 2>/dev/null | file -`
