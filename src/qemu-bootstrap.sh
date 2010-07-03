@@ -121,20 +121,21 @@ EOF
 
 
 # Access to the host filesystem:
-mkdir $target/root/host/
+mkdir $target/root/host-uml/
+mkdir $target/root/host-qemu/
 
 # if [ UML ]
 cat <<'EOF' >> $target/etc/fstab
 # Mount the host filesystem. Use the 'hostfs' switch to specify the
 # root of the hostfs (eg: ./uml debian.img hostfs=/home/me/).
-none	/root/host	hostfs	/
+none	/root/host-uml	hostfs	/
 EOF
 
 # if [ qemu ]
 cat <<'EOF' >> $target/etc/fstab
 # Access to the host via Samba when using 'qemu -smb /path ...':
 # (Debian users, beware: http://bugs.debian.org/249873)
-//10.0.2.4/qemu	/root/host	cifs	defaults,username=%,noauto
+//10.0.2.4/qemu	/root/host-qemu	cifs	defaults,username=%,noauto
 EOF
 
 echo "* Network configuration"
