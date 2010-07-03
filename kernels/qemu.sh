@@ -33,6 +33,6 @@ pushd linux-$VERSION-qemu
 cp ../allno.config .
 make allnoconfig
 make
-cp arch/i386/boot/bzImage ..
+cp arch/x86/boot/bzImage ..
 
 popd
