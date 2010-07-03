@@ -79,7 +79,6 @@ EOF
 offset=$(( $SECTORS * $BLOCKSIZE ))
 
 echo "* Formatting pseudo-partition 1"
-loop=`losetup -f` # dunno how I can avoid race condition here :/
-losetup -o $offset $loop $disk_image
+loop=$(losetup -o $offset -f -v $disk_image | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
 mkfs.$partition_fs -q $loop
 losetup -d $loop
