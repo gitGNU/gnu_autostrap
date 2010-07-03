@@ -4,3 +4,15 @@
 
 * qemu-make-debian-root, part of the 'qemu' or 'qemu-utils' package
   under Debian
+
+* qemubuilder: pbuilder runs qemu - it has to run, control and stop
+  qemu, which is something we may need to do (e.g. generating a kernel
+  initrd from within the emulator).
+
+* rootstrap: also uses UML to build Debian-based systems
+
+* rinse: like debootstrap, but for Fedora, and not official. However
+  it's currently not possible to build latest versions of the distro,
+  it seems Fedora people prefer going through the installation process
+  manually when they virtualize, and libvirt is going in that
+  direction too :/
