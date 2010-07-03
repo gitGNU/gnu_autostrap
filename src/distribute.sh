@@ -29,7 +29,7 @@ fi
 # Rewrite the disk image, this file get rid of deleted files that
 # weren't completely deleted and take space (eg. downloaded packages)
 mp1=`mktemp -d`
-./lomount.sh $image 1 $mp1 || exit 1
+lomount.sh $image 1 $mp1 || exit 1
 
 mp2=`mktemp -d`
 rm -f $image.2
@@ -42,7 +42,7 @@ dd if=$image of=$image.2 count=1 bs=$offset conv=notrunc
 
 loop=`losetup -f` # dunno how I can avoid race condition here :/
 losetup -o $offset $loop $image.2
-fstype=`./lofile.sh $image 1`
+fstype=`lofile.sh $image 1`
 if [ "$fstype" == 'UNKNOWN' ]; then
     echo "Unknown file system"
     exit 1
@@ -56,7 +56,7 @@ else
 fi
 losetup -d $loop
 
-./lomount.sh $image.2 1 $mp2 || exit 1
+lomount.sh $image.2 1 $mp2 || exit 1
 
 cp -a $mp1/* $mp2/
 
@@ -72,7 +72,7 @@ mv $image.2 $image
 #mv $image.sparse $image
 
 # Compress sparse file (taking holes into account)
-tar cSzf $image.tar.gz $image savane.sh
+tar cSzf $image.tar.gz $image
 # TODO: add several scripts in the archive, along with documentation
 # - README ("normal extraction tar xzf", "500MB sparse / 2GB max image"...)
 # - qemu.sh
