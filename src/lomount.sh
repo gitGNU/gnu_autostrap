@@ -1,7 +1,7 @@
 #!/bin/sh
 # Mount partitions within a disk image file
 # Copyright (C) 2005  Padraig Brady
-# Copyright (C) 2007  Sylvain Beucler
+# Copyright (C) 2007, 2010  Sylvain Beucler
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,9 @@
 
 # Changes by Sylvain Beucler <beuc@beuc.net>
 # V???      2007            Handle files that end with a number
+# V???      2010            Output 'losetup -a' on failure; mention kpartx
+
+# Note: see also 'kpartx', that can create /dev/mapper/loop0p1 .
 
 if [ "$#" -ne "3" ]; then
     echo "Usage: `basename $0` <image_filename> <partition # (1,2,...)> <mount point>" >&2
@@ -56,4 +59,12 @@ if echo $FILE | grep '[0-9]$'; then
 fi
 UNITS=`fdisk -lu $FILE 2>/dev/null | grep $FILE$PART | tr -d '*' | tr -s ' ' | cut -f2 -d' '`
 OFFSET=`expr 512 '*' $UNITS`
-mount -o loop,offset=$OFFSET $FILE $DEST
+mount -o loop,offset=$OFFSET $FILE $DEST \
+  || losetup -a >&2  # debug info
+
+# Normaly umount will take care of freeing the loopX device.  However
+# if running in UML (2.6.26), it won't.  If that's a problem we may
+# need to implement a -u option to manually free to loopX device.
+# This is crucial when the host does not have the 'loop' module
+# loaded, it only has a single loop0 special file.  We may need to
+# replace and repopulate /dev in umdo.sh, but that particularly slow.
