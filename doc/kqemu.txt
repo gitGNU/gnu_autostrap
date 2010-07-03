@@ -1,0 +1,10 @@
+kqemu, QEMU's accelerator module for the Linux kernel, is not
+supported at of v0.12 (2010).  Apparently there are issues with 64bit
+support, and the development team is more interested in supporting KVM
+(and enterprise virtualization).
+
+The latest working version I tested is 0.11.1 + kqemu 0.14pre1.
+A quick qemu compilation (that doesn't build all possible
+architectures, just i386) can be done with::
+
+  ./configure --target-list=i386-softmmu
