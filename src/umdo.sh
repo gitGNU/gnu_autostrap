@@ -21,6 +21,11 @@
 # Similar to sudo, but in user mode.
 # e.g.: useful to loop-mount disk images w/o root access
 
+# Note: currently (UML 2.6.26) this script is mercilessly killed when
+# UML quits, so all the clean-up phase is skipped.  Maybe a signal
+# from the internal UML bash process is forwarded to this (external)
+# bash process.
+
 # Note: your environment&mounts are _not_ saved between successive
 # invokations. We might do that by saving /proc/mounts before killing
 # UML, or by letting an initial UML run in background, connected via a
@@ -140,6 +145,11 @@ env | sed -e "s/^/export /" -e "s/=/='/" -e "s/\$/'/" >> $rc
 # Pseudo filesystems
 cat <<EOF >> $rc
 mount procfs -t proc /proc
+mount udev -t tmpfs /dev
+mkdir /dev/mapper /dev/pts
+# TODO: SLOW!  Maybe we can use stowfs instead?
+#(cd /dev && MAKEDEV std console pty loop)
+(cd /dev && MAKEDEV std loop)
 mount devptsfs -t devpts /dev/pts # devpts requires proc, apparently (screen)
 EOF
 
@@ -173,6 +183,8 @@ else
   # built as module, try to load it
   modprobe loop
 fi
+# Activate the device mapper for kpartx
+modprobe dm-mod
 EOF
 #insmod $MOD_PATH/drivers/block/loop.ko
 # What happens if the module is compiled statically?
@@ -232,6 +244,7 @@ umount /lib/modules/\`uname -r\`/
 umount /lib/modules/
 umount /proc
 umount /dev/pts
+umount /dev
 EOF
 
 # Forward the command return code
