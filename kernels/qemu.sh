@@ -17,7 +17,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-VERSION=2.6.21.5
+#VERSION=2.6.21.5
+VERSION=$(wget -q -O- http://kernel.org/pub/linux/kernel/v2.6/ \
+  | grep LATEST-IS- \
+  | sed -e 's/<[^>]\+>//g' -e 's/LATEST-IS-\([0-9.]\+\).*/\1/')
 if [ ! -e linux-$VERSION.tar.bz2 ]; then
     wget http://kernel.org/pub/linux/kernel/v2.6/linux-$VERSION.tar.bz2
 fi
