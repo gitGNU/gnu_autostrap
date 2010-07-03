@@ -89,6 +89,8 @@ fi
 #mv $disk_image.sparse $disk_image
 
 # Compress sparse file (taking holes into account)
+# Plain gzip would work too, but wouldn't respect the holes when
+# decompressing, hence the 'tar'.
 tar cSzf $disk_image.tar.gz $disk_image
 # TODO: add several scripts in the archive, along with documentation
 # - README ("normal extraction tar xzf", "500MB sparse / 2GB max image"...)
