@@ -42,7 +42,9 @@ if [ "$fstype" == "ext3" -o "$fstype" == "ext2" ]; then
     #mkfs.$fstype -I 128 -q $loop
     #losetup -d $loop
 
-    # Use zerofree (faster than copying all files to a new disk image)
+    # Use zerofree: it is faster than re-copying all files to a new
+    # disk image, and produces a slightly smaller image (though it's
+    # slightly larger after conversion to qcow2)
     loop=$(losetup -o $offset -f -v $image | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
     zerofree -v $loop
     losetup -d $loop
@@ -68,7 +70,7 @@ else
     losetup -d $loop
     lomount.sh $image.2 1 $mp2 || exit 1
 
-    cp -a $mp1/* $mp2/
+    cp -a --sparse=always $mp1/* $mp2/
 
     umount $mp1
     umount $mp2
