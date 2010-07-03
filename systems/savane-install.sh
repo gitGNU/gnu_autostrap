@@ -32,8 +32,8 @@ echo 'APT::Install-Recommends "false";' >> /etc/apt/apt.conf.d/00recommends  # l
 # GNU logo on startup
 aptitude --assume-yes install grub-splashimages 
 
-ln -sf /boot/grub/debian-gnu.xpm.gz /boot/grub/splash.xpm.gz
-sed -i -e 's,^### BEGIN AUTOMAGIC KERNELS LIST.*,\&\nsplashimage=(hd0,0)/boot/grub/splash.xpm.gz,'
+ln -sf debian-gnu.xpm.gz /boot/grub/splash.xpm.gz
+sed -i -e 's:^### BEGIN AUTOMAGIC KERNELS LIST.*:\&\nsplashimage=(hd0,0)/boot/grub/splash.xpm.gz:'
 update-grub
 
 # VServer test:
