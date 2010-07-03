@@ -92,7 +92,7 @@ image=savane.img
 
 echo "* Initial image"
 #<sudo>
-#qemu-bootstrap.sh $image 2048 lenny "$1" ext3 disk hda
+qemu-bootstrap.sh $image 2048 lenny "$1" ext3 disk hda
 #</sudo>
 
 echo "* Mount image"
@@ -100,7 +100,8 @@ start_image $image
 
 echo "* Copy installation files"
 dir=$(dirname $0)  # quick'n'dirty
-copy_in /root $dir/savane-install.sh
+copy_in /root/ $dir/savane-install.sh
+copy_in /boot/grub/ $dir/debian-gnu.xpm.gz
 
 echo "* Start installation"
 #<sudo>
