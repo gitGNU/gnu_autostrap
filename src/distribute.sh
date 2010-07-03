@@ -17,35 +17,36 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-image=$1
+disk_image=$1
 
-if [ -z $image ]; then
-    echo "Usage: $0 image"
+if [ -z $disk_image ]; then
+    echo "Usage: $0 disk_image"
     exit 1
 fi
+image_name=${disk_image%.img}
 
 # Rewrite the disk image, this file get rid of deleted files that
 # weren't completely deleted and take space (eg. downloaded packages)
-fstype=`lofile.sh $image 1`
-UNITS=`fdisk -lu $image 2>/dev/null | grep ${image}1 | tr -d '*' | tr -s ' ' | cut -f2 -d' '`
+partition_fs=`lofile.sh $disk_image 1`
+UNITS=`fdisk -lu $disk_image 2>/dev/null | grep ${disk_image}1 | tr -d '*' | tr -s ' ' | cut -f2 -d' '`
 offset=`expr 512 '*' $UNITS`
 
-if [ "$fstype" == 'UNKNOWN' ]; then
+if [ "$partition_fs" == 'UNKNOWN' ]; then
     echo "Unknown file system"
     exit 1
 fi
-if [ "$fstype" == "ext3" -o "$fstype" == "ext2" ]; then
+if [ "$partition_fs" == "ext3" -o "$partition_fs" == "ext2" ]; then
     # Oldish stuff:
     ## non-patched-grub-legacy doesn't like the default 256 inode size
     ## mkfs.ext3: "Warning: 256-byte inodes not usable on older systems"
-    #loop=$(losetup -o $offset -f -v $image.2 | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
-    #mkfs.$fstype -I 128 -q $loop
+    #loop=$(losetup -o $offset -f -v $disk_image.2 | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
+    #mkfs.$partition_fs -I 128 -q $loop
     #losetup -d $loop
 
     # Use zerofree: it is faster than re-copying all files to a new
     # disk image, and produces a slightly smaller image (though it's
     # slightly larger after conversion to qcow2)
-    loop=$(losetup -o $offset -f -v $image | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
+    loop=$(losetup -o $offset -f -v $disk_image | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
     zerofree -v $loop
     losetup -d $loop
 
@@ -57,34 +58,38 @@ if [ "$fstype" == "ext3" -o "$fstype" == "ext2" ]; then
     # so let's not use it.
 else
     mp1=`mktemp -d`
-    lomount.sh $image 1 $mp1 || exit 1
+    lomount.sh $disk_image 1 $mp1 || exit 1
 
     mp2=`mktemp -d`
-    rm -f $image.2
+    rm -f $disk_image.2
     # Make an image with exactly the same size and filesystem type
-    dd if=/dev/null of=$image.2 bs=1 seek=`ls -l $image | awk '{ print $5}'`
+    dd if=/dev/null of=$disk_image.2 bs=1 seek=`ls -l $disk_image | awk '{ print $5}'`
     # Copy first sector (bootsector + grub stage1.5)
-    dd if=$image of=$image.2 count=1 bs=$offset conv=notrunc
-    loop=$(losetup -o $offset -f -v $image.2 | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
-    mkfs.$fstype -q $loop
+    dd if=$disk_image of=$disk_image.2 count=1 bs=$offset conv=notrunc
+    loop=$(losetup -o $offset -f -v $disk_image.2 | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
+    if [ "$partition_fs" = "reiserfs" ]; then
+	mkfs.reiserfs --label $image_name -q $loop
+    else
+	mkfs.$partition_fs -L $image_name -q $loop
+    fi
     losetup -d $loop
-    lomount.sh $image.2 1 $mp2 || exit 1
+    lomount.sh $disk_image.2 1 $mp2 || exit 1
 
     cp -a --sparse=always $mp1/* $mp2/
 
     umount $mp1
     umount $mp2
 
-    mv $image.2 $image
+    mv $disk_image.2 $disk_image
 fi
 
 # Use sparse blocks whenever possible:
 # (not needed here, tar and qemu-img also take care of that)
-#cp --sparse=always $image $image.sparse
-#mv $image.sparse $image
+#cp --sparse=always $disk_image $disk_image.sparse
+#mv $disk_image.sparse $disk_image
 
 # Compress sparse file (taking holes into account)
-tar cSzf $image.tar.gz $image
+tar cSzf $disk_image.tar.gz $disk_image
 # TODO: add several scripts in the archive, along with documentation
 # - README ("normal extraction tar xzf", "500MB sparse / 2GB max image"...)
 # - qemu.sh
@@ -98,6 +103,6 @@ tar cSzf $image.tar.gz $image
 # (no prior extraction/uncompress is needed). It is probably less
 # efficient than a raw image file.
 # qcow (obsolete) appears with QEMU 0.6.1:
-#qemu-img convert -c $image -O qcow ${image%.img}.qcow
+#qemu-img convert -c $disk_image -O qcow ${disk_image%.img}.qcow
 # qcow2 appears with QEMU 0.9:
-qemu-img convert -c $image -O qcow2 ${image%.img}.qcow2
+qemu-img convert -c $disk_image -O qcow2 ${disk_image%.img}.qcow2

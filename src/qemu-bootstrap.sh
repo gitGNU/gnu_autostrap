@@ -58,6 +58,7 @@ debian_mirror=${4:-$default_debian_mirror}
 partition_fs=${5:-$default_partition_fs}
 disk_style=${6:-$default_disk_style}
 disk_guest_device=${7:-$default_disk_guest_device}
+image_name=${disk_image%.img}
 
 echo "* Creating filesystem image"
 # Mount directory
@@ -81,9 +82,9 @@ else
     # Beware, bs has a 2GB limit; using seek instead:
     dd if=/dev/null of=$disk_image count=0 bs=1M seek=${disk_size}
     if [ "$partition_fs" = "reiserfs" ]; then
-	mkfs.reiserfs -q $disk_image
+	mkfs.reiserfs --label $image_name -q $disk_image
     else
-	mkfs.$partition_fs -F $disk_image
+	mkfs.$partition_fs -L $image_name -q $disk_image
     fi
 fi
 
@@ -165,7 +166,7 @@ iface eth0 inet dhcp
 EOF
 
 # Host name
-image_hostname=${disk_image%.img}
+image_hostname=$image_name
 echo "$image_hostname" > $target/etc/hostname
 # 'localhost' alias support
 cat <<EOF > $target/etc/hosts
@@ -287,9 +288,9 @@ timeout 5
 ### BEGIN AUTOMAGIC KERNELS LIST
 ### END DEBIAN AUTOMAGIC KERNELS LIST
 
-title  ${disk_image%.img} - Debian GNU/Linux "$debian_distro"
+title  $image_name - Debian GNU/Linux "$debian_distro"
 root   (hd0,0)
-kernel /boot/bzImage root=/dev/hda1 clocksource=pit
+kernel /boot/bzImage root=LABEL=$image_name clocksource=pit
 EOF
 # Prepare for stock kernel installations:
 cat <<EOF >> $target/etc/kernel-img.conf

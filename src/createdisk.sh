@@ -28,6 +28,7 @@ function usage() {
 disk_image=$1
 SIZE=$2 #MB
 partition_fs=${3:-ext3}
+image_name=${disk_image%.img}
 
 if [ -z $disk_image -o -z $SIZE ]; then
     usage
@@ -80,5 +81,9 @@ offset=$(( $SECTORS * $BLOCKSIZE ))
 
 echo "* Formatting pseudo-partition 1"
 loop=$(losetup -o $offset -f -v $disk_image | sed -n -e 's,Loop device is \(/dev/.*\),\1,p')
-mkfs.$partition_fs -q $loop
+if [ "$partition_fs" = "reiserfs" ]; then
+    mkfs.reiserfs --label $image_name -q $loop
+else
+    mkfs.$partition_fs -L $image_name -q $loop
+fi
 losetup -d $loop
