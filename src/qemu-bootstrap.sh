@@ -188,6 +188,9 @@ echo 'DSelect::Clean "always";' >> /etc/apt/apt.conf.d/00aptitude
 chroot $target apt-get update
 DEBIAN_FRONTEND=noninteractive chroot $target aptitude --assume-yes install \
     console-data console-common emacs21-nox less openssh-server
+# Make OpenSSH regenerate keys on first start-up, this avoids
+# distributing known private host keys to all users.
+rm -f $target/etc/ssh/ssh_host_*
 if [ $default_partition_fs = "reiserfs" ]; then
     DEBIAN_FRONTEND=noninteractive chroot $target aptitude --assume-yes install \
 	reiserfsprogs
@@ -271,26 +274,27 @@ EOF
     # I'd need to forge a /boot/map...
 
     # Or, we could run the image, put it on the network, prepare SSH
-    # access and install it from within the emulator. That doesn't
+    # access and install it from within the emulator.  That doesn't
     # work with UML: both LILO and GRUB don't know how to handle
-    # /dev/ubda, with and without the 'fake_ide' switch. Better try
-    # with bare QEMU+SSH somehow.
+    # /dev/ubda, with and without the 'fake_ide' switch.
 
-    # Alternatively we could implement disk image support in a
-    # bootloader.
+    # GRUB can install it on a disk image if provided with a proper
+    # device.map, so let's do that - see below.
 
-    # Or, we can use GRUB and manually mess with the boot
-    # sectors. Tough, but doable:
+    # Apparently you need an initrd image to support
+    # root=LABEL=mylabel, but the disk is detected as 'hda' even in
+    # newer kernels anyway, so no 'hda' vs. 'sda' conflicts.
     cat > $target/boot/grub/menu.lst <<EOF
 default 0
 timeout 5
 #color cyan/blue white/blue
 ### BEGIN AUTOMAGIC KERNELS LIST
+# kopt=root=LABEL=$image_name ro clocksource=pit
 ### END DEBIAN AUTOMAGIC KERNELS LIST
 
 title  $image_name - Debian GNU/Linux "$debian_distro"
 root   (hd0,0)
-kernel /boot/bzImage root=LABEL=$image_name clocksource=pit
+kernel /boot/bzImage root=/dev/hda1 clocksource=pit
 EOF
 # Prepare for stock kernel installations:
 cat <<EOF >> $target/etc/kernel-img.conf

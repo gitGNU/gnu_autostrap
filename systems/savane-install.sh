@@ -33,7 +33,7 @@ echo 'APT::Install-Recommends "false";' >> /etc/apt/apt.conf.d/00recommends  # l
 aptitude --assume-yes install grub-splashimages 
 
 ln -sf debian-gnu.xpm.gz /boot/grub/splash.xpm.gz
-sed -i -e 's:^### BEGIN AUTOMAGIC KERNELS LIST.*:\&\nsplashimage=(hd0,0)/boot/grub/splash.xpm.gz:'
+sed -i -e 's:^### BEGIN AUTOMAGIC KERNELS LIST.*:\&\nsplashimage=(hd0,0)/boot/grub/splash.xpm.gz:' /boot/grub/menu.lst
 update-grub
 
 # VServer test:
@@ -75,7 +75,8 @@ cat <<EOF > /etc/mysql/conf.d/skip-networking.cnf
 [mysqld]
 skip-networking
 EOF
-aptitude --assume-yes install apache2 libapache2-mod-php5 mysql-server php5-mysql
+# Use 'noninteractive' to avoid being prompted 4x for a MySQL password
+DEBIAN_FRONTEND=noninteractive aptitude --assume-yes install apache2 libapache2-mod-php5 mysql-server php5-mysql
 make database
 ln -s /usr/src/savane/frontend/php /var/www/savane
 cat <<EOF > /etc/apache2/conf.d/savane.conf
