@@ -120,7 +120,7 @@ git clone git://git.sv.gnu.org/savane-cleanup/framework.git
 # Too big (87MB vs. 29MB extracted tarball)
 #svn checkout http://code.djangoproject.com/svn/django/branches/releases/1.2.X django
 wget http://www.djangoproject.com/download/1.2.1/tarball/
-tar xzvf Django-1.2.1.tar.gz
+tar xzf Django-1.2.1.tar.gz
 # Linking to the current installation directly:
 #python setup.py install
 ln -s /usr/src/Django-1.2.1/django /usr/lib/python2.5/
