@@ -191,7 +191,7 @@ DEBIAN_FRONTEND=noninteractive chroot $target aptitude --assume-yes install \
 # Make OpenSSH regenerate keys on first start-up, this avoids
 # distributing known private host keys to all users.
 rm -f $target/etc/ssh/ssh_host_*
-cat <<EOF > $target/etc/init.d/ssh_regen_hostkeys
+cat <<'EOF' > $target/etc/init.d/ssh_regen_hostkeys
 #!/bin/bash
 if [ "$1" == "start" -a ! -e /etc/ssh/ssh_host_rsa_key ]; then
   dpkg-reconfigure openssh-server
