@@ -108,3 +108,37 @@ tar cSzf $disk_image.tar.gz $disk_image
 #qemu-img convert -c $disk_image -O qcow ${disk_image%.img}.qcow
 # qcow2 appears with QEMU 0.9:
 qemu-img convert -c $disk_image -O qcow2 ${disk_image%.img}.qcow2
+
+
+# VirtualBox
+# apt-get install virtualbox-ose
+disk_image_vdi=${disk_image%.img}.vdi
+VBoxManage convertfromraw $disk_image $disk_image_vdi
+# The resulting file is still quite big, we'd need to compress it.
+#gzip $disk_image_vdi
+# But let's create a OVF file instead.
+#VBoxManage createhd --filename $disk_image_vdi --size 1 --remember
+mv -f $disk_image_vdi ~/.VirtualBox/HardDisks/
+VBoxManage createvm --name $image_name --register
+# Let's not use sata otherwise we'll get hda vs. sda conflicts, and
+# we'd need to generate an initrd + use root=LABEL=savane.
+VBoxManage storagectl $image_name --name hda --add ide --controller PIIX4
+VBoxManage storageattach $image_name --storagectl hda --port 0 --device 0 --type hdd --medium $disk_image_vdi
+VBoxManage modifyhd $disk_image_vdi --compact
+VBoxManage modifyvm $image_name --nic1 nat --nictype1 82540EM
+VBoxManage modifyvm $image_name --ostype Debian
+VBoxManage export -o savane.ovf
+# Clean-up
+VBoxManage storagectl savane --name hda --remove
+VBoxManage unregistervm savane --delete
+rm -f ~/.VirtualBox/HardDisks/$disk_image_vdi
+
+# The VM fails to boot if we do this???
+# Configuration error: Failed to get the "MAC" value (VERR_CFGM_VALUE_NOT_FOUND).
+# Unknown error creating VM (VERR_CFGM_VALUE_NOT_FOUND).
+#VBoxManage setextradata "$image_name" "VBoxInternal/Devices/pcnet/0/LUN#0/Config/Apache/Protocol" TCP
+#VBoxManage setextradata "$image_name" "VBoxInternal/Devices/pcnet/0/LUN#0/Config/Apache/GuestPort" 80
+#VBoxManage setextradata "$image_name" "VBoxInternal/Devices/pcnet/0/LUN#0/Config/Apache/HostPort" 50081
+#VBoxManage setextradata "$image_name" "VBoxInternal/Devices/pcnet/0/LUN#0/Config/SSH/Protocol" TCP
+#VBoxManage setextradata "$image_name" "VBoxInternal/Devices/pcnet/0/LUN#0/Config/SSH/GuestPort" 22
+#VBoxManage setextradata "$image_name" "VBoxInternal/Devices/pcnet/0/LUN#0/Config/SSH/HostPort" 2222

@@ -262,7 +262,7 @@ if [ $disk_style = 'disk' ]; then
     
     echo "* Boot loaders"
     DEBIAN_FRONTEND=noninteractive chroot $target aptitude --assume-yes install \
-	lilo grub grub-splashimages
+	grub grub-splashimages
     
     # Using clocksource=pit as per qemu-doc.html §3.11.1:
     #"When using a 2.6 guest Linux kernel, you should add the option
@@ -271,27 +271,28 @@ if [ $disk_style = 'disk' ]; then
     # QEMU cannot simulate exactly."
 
     # LILO
-    cat > $target/etc/lilo.conf <<EOF
-boot=/dev/hda
-append="clocksource=pit"
-prompt
-timeout=50
-bitmap=/boot/coffee.bmp
-root=current
+    # Disabled for now, it tends to overwrite GRUB when installing a new kernel
+    # Plus we can't install LILO from outside QEMU :'(
+    # We'd need to forge a /boot/map...
+#    cat > $target/etc/lilo.conf <<EOF
+#boot=/dev/hda
+#append="clocksource=pit"
+#prompt
+#timeout=50
+#bitmap=/boot/coffee.bmp
+#root=current
+#
+#image=/boot/bzImage
+#  label=Debian_${debian_distro}
+#EOF
 
-image=/boot/bzImage
-  label=Debian_${debian_distro}
-EOF
-    # I can't install LILO from outside QEMU :'(
-    # I'd need to forge a /boot/map...
+    # GRUB can install it on a disk image if provided with a proper
+    # device.map, so let's do that - see below.
 
     # Or, we could run the image, put it on the network, prepare SSH
     # access and install it from within the emulator.  That doesn't
     # work with UML: both LILO and GRUB don't know how to handle
     # /dev/ubda, with and without the 'fake_ide' switch.
-
-    # GRUB can install it on a disk image if provided with a proper
-    # device.map, so let's do that - see below.
 
     # Apparently you need an initrd image to support
     # root=LABEL=mylabel, but the disk is detected as 'hda' even in
@@ -336,7 +337,6 @@ EOF
 fi
 
 
-
 echo "* Populating /dev"
 # -> because I lack /dev/hda after reboot with a Debian guest.
 #    TODO: why was that an issue? Just to install the bootloader?
@@ -350,6 +350,12 @@ chroot $target bash -c 'cd dev && MAKEDEV std console pty fd'
 chroot $target bash -c 'cd dev && MAKEDEV ubd'
 # For QEMU
 chroot $target bash -c 'cd dev && MAKEDEV fd0 hda hdc'
+
+
+echo "* Power button support"
+DEBIAN_FRONTEND=noninteractive chroot $target aptitude --assume-yes install \
+    acpid
+
 
 echo "* Clean-up"
 chroot $target aptitude clean
