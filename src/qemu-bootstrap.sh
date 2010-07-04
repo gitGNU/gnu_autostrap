@@ -191,6 +191,18 @@ DEBIAN_FRONTEND=noninteractive chroot $target aptitude --assume-yes install \
 # Make OpenSSH regenerate keys on first start-up, this avoids
 # distributing known private host keys to all users.
 rm -f $target/etc/ssh/ssh_host_*
+cat <<EOF > $target/etc/init.d/ssh_regen_hostkeys
+#!/bin/bash
+if [ ! -e /etc/ssh/ssh_host_rsa_key ]; then
+  dpkg-reconfigure openssh-server
+fi
+EOF
+chmod 755 $target/etc/init.d/ssh_regen_hostkeys
+chroot $target update-rc.d ssh_regen_hostkeys defaults 15  # right before 'ssh' (16)
+# Allow empty SSH passwords
+sed -i -e 's/PermitEmptyPasswords .*/PermitEMptyPasswords yes/' /etc/ssh/sshd_config
+sed -i -e 's/pam_unix.so nullok_secure/pam_unix.so nullok/' /etc/pam.d/common-auth
+
 if [ $default_partition_fs = "reiserfs" ]; then
     DEBIAN_FRONTEND=noninteractive chroot $target aptitude --assume-yes install \
 	reiserfsprogs
