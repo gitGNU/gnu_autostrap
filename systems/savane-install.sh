@@ -56,7 +56,7 @@ aptitude --assume-yes install -t lenny-backports git-core mercurial
 
 
 ## Savane
-cd /usr/src
+cd /usr/src/
 git clone git://git.sv.gnu.org/savane-cleanup.git savane
 cd savane
 aptitude --assume-yes install autoconf automake make \
@@ -100,6 +100,7 @@ our $sys_cron_groups="yes";
 our $sys_homedir="/home";
 EOF
 cat <<'EOF' > /etc/savane/.savane.conf.php
+<?php
 // Empty file, using default configuration.
 EOF
 cat <<'EOF' > /etc/cron.d/savane
@@ -110,3 +111,38 @@ mkdir /srv/cvs /srv/svn /srv/git /srv/hg
 
 # Hacking
 aptitude install php-elisp
+
+
+# Savane framework
+cd /usr/src/
+apt-get install python-mysqldb
+git clone git://git.sv.gnu.org/savane-cleanup/framework.git
+# Too big (87MB vs. 29MB extracted tarball)
+#svn checkout http://code.djangoproject.com/svn/django/branches/releases/1.2.X django
+wget http://www.djangoproject.com/download/1.2.1/tarball/
+tar xzvf Django-1.2.1.tar.gz
+# Linking to the current installation directly:
+#python setup.py install
+ln -s /usr/src/Django-1.2.1/django /usr/lib/python2.5/
+
+cd framework/
+mysql -e "CREATE DATABASE savane_framework DEFAULT CHARACTER SET utf8;"
+echo 'from settings_default import *' > settings.py
+cat <<EOF >> settings.py
+DATABASES = {
+    'default': {
+        'NAME': 'savane_framework',
+        'ENGINE': 'django.db.backends.mysql',
+        'USER': 'root',
+        'PASSWORD': '',
+    }
+}
+EOF
+./manage.py syncdb --noinput
+
+
+cd /usr/src/
+echo <<EOF > README
+'savane' is the current PHP+Perl version.
+'framework' is the next Python/Django implementation.
+EOF
