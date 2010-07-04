@@ -130,8 +130,10 @@ VBoxManage -q modifyvm $image_name --nic1 nat --nictype1 82540EM
 VBoxManage -q modifyvm $image_name --ostype Debian
 VBoxManage -q export $image_name -o savane.ovf
 # Clean-up
-VBoxManage -q storagectl savane --name hda --remove
-VBoxManage -q unregistervm savane --delete
+VBoxManage -q storagectl $image_name --name hda --remove
+VBoxManage -q unregistervm $image_name --delete
+# If there's a better way to remove references to the disk image please let me know...
+sed -i -e "s,.*<HardDisk .*/$disk_image_vdi\".*,," ~/.VirtualBox/VirtualBox.xml
 rm -f ~/.VirtualBox/HardDisks/$disk_image_vdi
 
 # The VM fails to boot if we do this???
