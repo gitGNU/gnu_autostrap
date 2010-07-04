@@ -122,13 +122,14 @@ mkdir -p  ~/.VirtualBox/HardDisks/
 mv -f $disk_image_vdi ~/.VirtualBox/HardDisks/
 VBoxManage -q createvm --name $image_name --register
 # Let's not use sata otherwise we'll get hda vs. sda conflicts, and
-# we'd need to generate an initrd + use root=LABEL=savane.
+# we'd need to generate an initrd + use root=LABEL=myimage.
 VBoxManage -q storagectl $image_name --name hda --add ide --controller PIIX4
 VBoxManage -q storageattach $image_name --storagectl hda --port 0 --device 0 --type hdd --medium $disk_image_vdi
 VBoxManage -q modifyhd $disk_image_vdi --compact
 VBoxManage -q modifyvm $image_name --nic1 nat --nictype1 82540EM
 VBoxManage -q modifyvm $image_name --ostype Debian
-VBoxManage -q export $image_name -o savane.ovf
+rm -f ${disk_image%.img}.vmdk
+VBoxManage -q export $image_name -o ${disk_image%.img}.ovf
 # Clean-up
 VBoxManage -q storagectl $image_name --name hda --remove
 VBoxManage -q unregistervm $image_name --delete
