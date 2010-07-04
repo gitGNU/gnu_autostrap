@@ -1,23 +1,33 @@
-* Le Bouteur: Smallish standalone GRUB installation to boot on network
-  or reinstall grub:
-  http://labs.libre-entreprise.org/projects/lebouteur/
+* vmbuilder: http://help.ubuntu.com/community/JeOSVMBuilder ,
+  Debian-based, apparently targetted at generating VMs for existing
+  virtualization infrastructures (though it's said to support
+  VirtualBox); definitely needs a better look.
+
+* Marionnet: http://www.marionnet.org/ manages lots of UML VMs for
+  (say) network simulations, and has an option to build new ones,
+  though I don't know how that's implemented.
 
 * qemu-make-debian-root, part of the 'qemu' or 'qemu-utils' package
   under Debian
+
+* rootstrap: also uses UML to build Debian-based systems
 
 * qemubuilder: pbuilder runs qemu - it has to run, control and stop
   qemu, which is something we may need to do (e.g. generating a kernel
   initrd from within the emulator).
 
-* rootstrap: also uses UML to build Debian-based systems
-
-* vmbuilder: http://help.ubuntu.com/community/JeOSVMBuilder ,
-  Debian-based, apparently targetted at generating VMs for existing
-  virtualization infrastructures (though it's said to support
-  VirtualBox); definitely needs a better look.
+* qemu-debootstrap from the 'qemu-kvm' package uses the debootstrap
+  second-stage technique described at
+  http://wiki.ubuntu.com/ARM/RootfsFromScratch/QemuDebootstrap to have
+  processor-dependent part run by QEMU's user-mode tools, hence
+  installing a system for a foreign processor.
 
 * rinse: like debootstrap, but for Fedora, and not official. However
   it's currently not possible to build latest versions of the distro,
   it seems Fedora people prefer going through the installation process
   manually when they virtualize, and libvirt is going in that
   direction too :/
+
+* Le Bouteur: Smallish standalone GRUB installation to boot on network
+  or reinstall grub:
+  http://labs.libre-entreprise.org/projects/lebouteur/
